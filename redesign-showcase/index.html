@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AtliQ Hardware — Business Insight 360 | Dashboard Redesign</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              DEFAULT: '#FF5722',
+              hover: '#F4511E',
+              dark: '#E64A19',
+              light: '#FF8A65',
+              glow: 'rgba(255, 87, 34, 0.25)',
+            },
+            teal: {
+              DEFAULT: '#00D2B4',
+              hover: '#00BFA5',
+              glow: 'rgba(0, 210, 180, 0.25)',
+            },
+            surface: {
+              canvas: '#0B0F19',
+              card: '#131B2E',
+              cardHover: '#18233C',
+              header: '#111728',
+              border: '#232F4A',
+              borderLight: '#334155',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0B0F19;
+      color: #F8FAFC;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #0B0F19;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #232F4A;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #FF5722;
+    }
+    .glass-card {
+      background: #131B2E;
+      border: 1px solid #232F4A;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+    .glass-card:hover {
+      border-color: #334466;
+    }
+    .badge-glow {
+      box-shadow: 0 0 20px rgba(255, 87, 34, 0.2);
+    }
+  </style>
+</head>
+<body class="bg-surface-canvas text-slate-100 min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const DATA_SUMMARY = {
+      totalRecords: "1.8M+",
+      fiscalYears: ["2020", "2021", "2022"],
+      regions: ["All Regions", "APAC", "EU", "North America", "LATAM"],
+      markets: ["All Markets", "India", "USA", "Germany", "United Kingdom", "Canada", "Australia", "Japan"],
+      kpis: {
+        netSales: "$3.74B",
+        salesGrowth: "+15.6%",
+        grossMargin: "38.08%",
+        marginChange: "+0.8pts",
+        netProfit: "2.31%",
+        profitChange: "-0.3pts",
+        forecastAccuracy: "80.5%",
+        accuracyChange: "+2.4pts",
+        absoluteError: "19.5%",
+        netError: "+4.2%"
+      }
+    };
+
+    const PL_DATA = [
+      { line: "Gross Sales", actual: "$4,285M", ly: "$3,620M", varAmt: "+$665M", varPct: "+18.4%", type: "revenue" },
+      { line: "  (-) Pre-Invoice Deductions", actual: "$321M", ly: "$240M", varAmt: "-$81M", varPct: "+33.8%", type: "deduction" },
+      { line: "Net Invoice Sales", actual: "$3,964M", ly: "$3,380M", varAmt: "+$584M", varPct: "+17.3%", type: "subtotal" },
+      { line: "  (-) Post-Invoice Deductions", actual: "$224M", ly: "$192M", varAmt: "-$32M", varPct: "+16.7%", type: "deduction" },
+      { line: "Net Sales", actual: "$3,740M", ly: "$3,188M", varAmt: "+$552M", varPct: "+17.3%", type: "highlight" },
+      { line: "  (-) Manufacturing Cost", actual: "$1,820M", ly: "$1,550M", varAmt: "-$270M", varPct: "+17.4%", type: "cost" },
+      { line: "  (-) Freight & Other Costs", actual: "$496M", ly: "$424M", varAmt: "-$72M", varPct: "+17.0%", type: "cost" },
+      { line: "Total COGS", actual: "$2,316M", ly: "$1,974M", varAmt: "-$342M", varPct: "+17.3%", type: "subtotal" },
+      { line: "Gross Margin", actual: "$1,424M", ly: "$1,214M", varAmt: "+$210M", varPct: "+17.3%", type: "highlight" },
+      { line: "Gross Margin %", actual: "38.08%", ly: "38.08%", varAmt: "+0.0%", varPct: "Flat", type: "percent" },
+      { line: "  (-) Operational Expenses", actual: "$1,338M", ly: "$1,128M", varAmt: "-$210M", varPct: "+18.6%", type: "cost" },
+      { line: "Net Profit", actual: "$86.4M", ly: "$86.0M", varAmt: "+$0.4M", varPct: "+0.5%", type: "final" },
+      { line: "Net Profit %", actual: "2.31%", ly: "2.70%", varAmt: "-0.39pts", varPct: "-14.4%", type: "percent" }
+    ];
+
+    const TOP_CUSTOMERS = [
+      { name: "Amazon", market: "India & Global", revenue: "$482M", gmPct: "39.4%", growth: "+24.2%" },
+      { name: "Atliq Exclusive", market: "Direct Stores", revenue: "$394M", gmPct: "44.8%", growth: "+18.6%" },
+      { name: "Atliq e Store", market: "E-Commerce Direct", revenue: "$345M", gmPct: "42.1%", growth: "+31.5%" },
+      { name: "Flipkart", market: "India", revenue: "$286M", gmPct: "37.2%", growth: "+14.8%" },
+      { name: "Best Buy", market: "USA", revenue: "$240M", gmPct: "36.5%", growth: "+9.4%" },
+      { name: "Media Markt", market: "Germany", revenue: "$195M", gmPct: "35.8%", growth: "+12.1%" },
+      { name: "Croma", market: "India", revenue: "$168M", gmPct: "38.2%", growth: "+16.3%" }
+    ];
+
+    function App() {
+      const [activeTab, setActiveTab] = useState("home");
+      const [selectedFY, setSelectedFY] = useState("2022");
+      const [selectedRegion, setSelectedRegion] = useState("All Regions");
+      const [chartInstance, setChartInstance] = useState(null);
+      const canvasRef = useRef(null);
+
+      const navTabs = [
+        { id: "home", label: "Home", icon: "home" },
+        { id: "finance", label: "Finance View", icon: "dollar-sign" },
+        { id: "sales", label: "Sales View", icon: "trending-up" },
+        { id: "market", label: "Market View", icon: "pie-chart" },
+        { id: "supply", label: "Supply Chain", icon: "link-2" },
+        { id: "executive", label: "Executive View", icon: "shield" },
+      ];
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [activeTab]);
+
+      // Render chart for Finance View
+      useEffect(() => {
+        if (activeTab === "finance" && canvasRef.current) {
+          if (chartInstance) {
+            chartInstance.destroy();
+          }
+          const ctx = canvasRef.current.getContext('2d');
+          const gradientSales = ctx.createLinearGradient(0, 0, 0, 300);
+          gradientSales.addColorStop(0, 'rgba(255, 87, 34, 0.4)');
+          gradientSales.addColorStop(1, 'rgba(255, 87, 34, 0.0)');
+
+          const gradientMargin = ctx.createLinearGradient(0, 0, 0, 300);
+          gradientMargin.addColorStop(0, 'rgba(0, 210, 180, 0.4)');
+          gradientMargin.addColorStop(1, 'rgba(0, 210, 180, 0.0)');
+
+          const newChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+              datasets: [
+                {
+                  label: 'Net Sales ($M)',
+                  data: [260, 285, 395, 480, 310, 290, 320, 275, 295, 340, 360, 385],
+                  borderColor: '#FF5722',
+                  backgroundColor: gradientSales,
+                  borderWidth: 3,
+                  fill: true,
+                  tension: 0.4
+                },
+                {
+                  label: 'Gross Margin ($M)',
+                  data: [98, 108, 150, 185, 118, 110, 122, 105, 112, 130, 137, 147],
+                  borderColor: '#00D2B4',
+                  backgroundColor: gradientMargin,
+                  borderWidth: 3,
+                  fill: true,
+                  tension: 0.4
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: '#CBD5E1', font: { family: 'Plus Jakarta Sans', size: 12 } }
+                }
+              },
+              scales: {
+                x: {
+                  grid: { color: '#1E293B' },
+                  ticks: { color: '#94A3B8' }
+                },
+                y: {
+                  grid: { color: '#1E293B' },
+                  ticks: { color: '#94A3B8' }
+                }
+              }
+            }
+          });
+          setChartInstance(newChart);
+        }
+      }, [activeTab]);
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* Top Executive Header */}
+          <header className="sticky top-0 z-50 bg-surface-header/90 backdrop-blur-md border-b border-surface-border px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="relative flex items-center justify-center p-1.5 rounded-xl bg-surface-card border border-surface-border">
+                <img 
+                  src="atliq_logo.png" 
+                  alt="AtliQ Hardware Logo" 
+                  className="w-10 h-10 object-contain hover:scale-105 transition-transform" 
+                />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2.5">
+                  <span className="font-extrabold text-brand text-lg tracking-tight">AtliQ Hardware</span>
+                  <span className="text-slate-600">|</span>
+                  <span className="font-semibold text-white text-base">Business Insight 360</span>
+                  <span className="bg-brand/10 text-brand text-xs font-semibold px-2 py-0.5 rounded-full border border-brand/20">
+                    Redesign v2.0
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">Executive Decision Support & Integrated 360° Analytics</p>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <nav className="flex items-center bg-surface-card border border-surface-border rounded-xl p-1 gap-1">
+              {navTabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      isActive
+                        ? "bg-brand text-white shadow-lg shadow-brand/20"
+                        : "text-slate-400 hover:text-white hover:bg-surface-cardHover"
+                    }`}
+                  >
+                    <i data-lucide={tab.icon} className="w-3.5 h-3.5"></i>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Global Slicer Controls */}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1.5 bg-surface-card border border-surface-border px-3 py-1.5 rounded-lg text-xs">
+                <span className="text-slate-400 font-medium">FY:</span>
+                <select
+                  value={selectedFY}
+                  onChange={(e) => setSelectedFY(e.target.value)}
+                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+                >
+                  <option value="2022" className="bg-surface-card">2022</option>
+                  <option value="2021" className="bg-surface-card">2021</option>
+                  <option value="2020" className="bg-surface-card">2020</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-1.5 bg-surface-card border border-surface-border px-3 py-1.5 rounded-lg text-xs">
+                <span className="text-slate-400 font-medium">Region:</span>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+                >
+                  {DATA_SUMMARY.regions.map(r => (
+                    <option key={r} value={r} className="bg-surface-card">{r}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Body Content based on Active Tab */}
+          <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+            {activeTab === "home" && <HomeView setActiveTab={setActiveTab} />}
+            {activeTab === "finance" && <FinanceView canvasRef={canvasRef} />}
+            {activeTab === "sales" && <SalesView />}
+            {activeTab === "market" && <MarketView />}
+            {activeTab === "supply" && <SupplyChainView />}
+            {activeTab === "executive" && <ExecutiveView />}
+          </main>
+
+          {/* Footer */}
+          <footer className="border-t border-surface-border bg-surface-header/50 py-4 px-6 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-2">
+              <img src="atliq_logo.png" alt="AtliQ" className="w-5 h-5 object-contain" />
+              <span>AtliQ Hardware Business Insight 360  &copy; 2026</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span>Theme: AtliQ Obsidian Dark</span>
+              <span>•</span>
+              <span>Data Engine: MySQL & Power BI</span>
+              <span>•</span>
+              <span className="text-teal font-medium">Model Status: Connected</span>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 1. HOME VIEW
+    // ==========================================
+    function HomeView({ setActiveTab }) {
+      const modules = [
+        {
+          id: "finance",
+          title: "Finance View",
+          desc: "Full P&L statement, gross margin % trends, COGS breakdown, operational expense tracking and net profit.",
+          icon: "dollar-sign",
+          kpi: "$3.74B Net Sales",
+          badge: "38.08% GM%"
+        },
+        {
+          id: "sales",
+          title: "Sales View",
+          desc: "Deep customer and product unit diagnostics, scatter matrix, top retail and e-commerce channel performance.",
+          icon: "trending-up",
+          kpi: "10.4M Units Sold",
+          badge: "+17.3% YoY"
+        },
+        {
+          id: "market",
+          title: "Market View",
+          desc: "Regional market penetration across APAC, EU, NA, and LATAM with division contribution and target waterfall.",
+          icon: "pie-chart",
+          kpi: "8 Key Markets",
+          badge: "4 Global Regions"
+        },
+        {
+          id: "supply",
+          title: "Supply Chain",
+          desc: "Forecast accuracy tracking, net vs absolute error analysis, out-of-stock risk and excess inventory prevention.",
+          icon: "link-2",
+          kpi: "80.5% Accuracy",
+          badge: "-1.8M Net Err"
+        },
+        {
+          id: "executive",
+          title: "Executive View",
+          desc: "Consolidated C-Suite performance cockpit, high-level strategic KPI benchmarks, top 5 vs bottom 5 customers.",
+          icon: "shield",
+          kpi: "$86.4M Net Profit",
+          badge: "C-Level Cockpit"
+        }
+      ];
+
+      return (
+        <div className="space-y-6">
+          {/* Hero Banner with AtliQ Logo */}
+          <div className="glass-card relative overflow-hidden p-8 border-brand/30">
+            <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+              <img src="atliq_logo.png" alt="" className="w-96 h-96 object-contain" />
+            </div>
+
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center space-x-6">
+                <img src="atliq_logo.png" alt="AtliQ Logo" className="w-24 h-24 object-contain p-2 bg-surface-card rounded-2xl border border-surface-border shadow-xl shadow-brand/10" />
+                <div>
+                  <div className="flex items-center space-x-3">
+                    <h1 className="text-3xl font-extrabold text-white">AtliQ Hardware Analytics 360°</h1>
+                    <span className="bg-brand text-white text-xs font-bold px-2.5 py-1 rounded-full">Redesigned Package</span>
+                  </div>
+                  <p className="text-slate-300 text-sm mt-2 max-w-2xl leading-relaxed">
+                    Welcome to the enterprise analytics workspace. This redesign package transforms draft reports into a unified, high-contrast executive intelligence system with official AtliQ branding, calibrated DAX measures, and pixel-perfect layouts.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a 
+                  href="wallpaper_finance.png" 
+                  download 
+                  className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg shadow-lg shadow-brand/20 flex items-center space-x-2 transition-all"
+                >
+                  <i data-lucide="download" className="w-4 h-4"></i>
+                  <span>Download Canvas Wallpapers</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Quick KPI Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-surface-border">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">FY22 Net Sales</p>
+                <p className="text-2xl font-extrabold text-white mt-1">$3,740M</p>
+                <p className="text-xs text-teal font-semibold mt-0.5">▲ +17.3% vs LY</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Gross Margin %</p>
+                <p className="text-2xl font-extrabold text-white mt-1">38.08%</p>
+                <p className="text-xs text-slate-400 font-semibold mt-0.5">● Stable at target</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Net Profit %</p>
+                <p className="text-2xl font-extrabold text-white mt-1">2.31%</p>
+                <p className="text-xs text-rose-400 font-semibold mt-0.5">▼ -0.39pts variance</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Forecast Accuracy</p>
+                <p className="text-2xl font-extrabold text-white mt-1">80.5%</p>
+                <p className="text-xs text-teal font-semibold mt-0.5">▲ +2.4pts improvement</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Module Navigation Cards */}
+          <div>
+            <h2 className="text-lg font-bold text-white mb-4">Enterprise Analytics Modules</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {modules.map((m) => (
+                <div 
+                  key={m.id}
+                  onClick={() => setActiveTab(m.id)}
+                  className="glass-card p-5 cursor-pointer hover:border-brand/50 hover:bg-surface-cardHover hover:-translate-y-1 transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center border border-brand/20 group-hover:bg-brand group-hover:text-white transition-all">
+                        <i data-lucide={m.icon} className="w-5 h-5"></i>
+                      </div>
+                      <span className="text-[10px] font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-full border border-teal/20">
+                        {m.badge}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-white text-base group-hover:text-brand transition-colors">{m.title}</h3>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">{m.desc}</p>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-surface-border flex items-center justify-between text-xs font-semibold text-brand">
+                    <span>{m.kpi}</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wallpaper Preview Carousel */}
+          <div className="glass-card p-6">
+            <h3 className="font-bold text-white text-base mb-1">Canvas Redesign Wallpaper Assets (1920x1080)</h3>
+            <p className="text-xs text-slate-400 mb-4">Official Power BI backgrounds generated with integrated AtliQ branding and slot containers.</p>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {[
+                { name: "Finance View", file: "wallpaper_finance.png" },
+                { name: "Sales View", file: "wallpaper_sales.png" },
+                { name: "Market View", file: "wallpaper_market.png" },
+                { name: "Supply Chain", file: "wallpaper_supply_chain.png" },
+                { name: "Executive View", file: "wallpaper_executive.png" },
+                { name: "Landing Page", file: "wallpaper_home.png" }
+              ].map(w => (
+                <a key={w.name} href={w.file} target="_blank" className="group rounded-lg overflow-hidden border border-surface-border bg-surface-header p-1 hover:border-brand transition-all block">
+                  <img src={w.file} alt={w.name} className="w-full h-24 object-cover rounded" />
+                  <p className="text-[11px] font-semibold text-slate-300 group-hover:text-brand text-center mt-2 py-1">{w.name}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 2. FINANCE VIEW
+    // ==========================================
+    function FinanceView({ canvasRef }) {
+      return (
+        <div className="space-y-6">
+          {/* Top KPI Header */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="glass-card p-5 border-l-4 border-l-brand">
+              <span className="text-xs text-slate-400 font-medium">Net Sales</span>
+              <div className="flex items-baseline space-x-2 mt-1">
+                <span className="text-3xl font-extrabold text-white">$3,740M</span>
+                <span className="text-xs font-bold text-teal">▲ +17.3%</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">LY: $3,188M • Var: +$552M</p>
+            </div>
+
+            <div className="glass-card p-5 border-l-4 border-l-teal">
+              <span className="text-xs text-slate-400 font-medium">Gross Margin %</span>
+              <div className="flex items-baseline space-x-2 mt-1">
+                <span className="text-3xl font-extrabold text-white">38.08%</span>
+                <span className="text-xs font-bold text-slate-400">● 0.0pts</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">GM Amount: $1,424M • LY: $1,214M</p>
+            </div>
+
+            <div className="glass-card p-5 border-l-4 border-l-rose-500">
+              <span className="text-xs text-slate-400 font-medium">Net Profit %</span>
+              <div className="flex items-baseline space-x-2 mt-1">
+                <span className="text-3xl font-extrabold text-white">2.31%</span>
+                <span className="text-xs font-bold text-rose-400">▼ -0.39pts</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Net Profit: $86.4M • OpEx: $1,338M</p>
+            </div>
+          </div>
+
+          {/* Main Grid: P&L Statement on Left, Charts on Right */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* P&L Statement Table (7 Cols) */}
+            <div className="lg:col-span-6 glass-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-white text-base flex items-center space-x-2">
+                  <i data-lucide="file-text" className="w-4 h-4 text-brand"></i>
+                  <span>Profit & Loss Statement (P&L)</span>
+                </h3>
+                <span className="text-xs text-slate-400">Values in USD Millions</span>
+              </div>
+
+              <div className="overflow-x-auto custom-scroll">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-surface-border text-slate-400 text-left">
+                      <th className="py-2.5 font-semibold">Line Item</th>
+                      <th className="py-2.5 font-semibold text-right">Actual</th>
+                      <th className="py-2.5 font-semibold text-right">LY</th>
+                      <th className="py-2.5 font-semibold text-right">Var $</th>
+                      <th className="py-2.5 font-semibold text-right">Var %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border/50">
+                    {PL_DATA.map((row, idx) => {
+                      let textClass = "text-slate-200";
+                      let bgClass = "";
+                      if (row.type === "highlight") {
+                        textClass = "font-bold text-brand";
+                        bgClass = "bg-brand/5";
+                      } else if (row.type === "subtotal" || row.type === "final") {
+                        textClass = "font-semibold text-white";
+                        bgClass = "bg-surface-header/40";
+                      } else if (row.type === "deduction" || row.type === "cost") {
+                        textClass = "text-slate-400";
+                      }
+
+                      const isPos = row.varAmt.startsWith("+");
+                      return (
+                        <tr key={idx} className={`${bgClass} hover:bg-surface-cardHover/60`}>
+                          <td className={`py-2 px-1 ${textClass}`}>{row.line}</td>
+                          <td className={`py-2 text-right font-mono ${textClass}`}>{row.actual}</td>
+                          <td className="py-2 text-right text-slate-400 font-mono">{row.ly}</td>
+                          <td className={`py-2 text-right font-mono font-medium ${isPos ? "text-teal" : "text-rose-400"}`}>
+                            {row.varAmt}
+                          </td>
+                          <td className={`py-2 text-right font-mono font-medium ${isPos ? "text-teal" : "text-rose-400"}`}>
+                            {row.varPct}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Visuals on Right (5 Cols) */}
+            <div className="lg:col-span-6 space-y-6">
+              {/* Monthly Trend Area Chart */}
+              <div className="glass-card p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-white text-sm flex items-center space-x-2">
+                    <i data-lucide="bar-chart-2" className="w-4 h-4 text-teal"></i>
+                    <span>Net Sales & Gross Margin Monthly Trend</span>
+                  </h3>
+                  <span className="text-[11px] text-teal font-medium">Fiscal Year 2022</span>
+                </div>
+                <div className="h-64 relative">
+                  <canvas ref={canvasRef}></canvas>
+                </div>
+              </div>
+
+              {/* Segment & Channel Contribution */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="glass-card p-4">
+                  <span className="text-xs text-slate-400 font-medium">Top Segment</span>
+                  <p className="text-lg font-bold text-white mt-1">Notebooks (52%)</p>
+                  <p className="text-xs text-teal mt-0.5">$1,945M Net Revenue</p>
+                  <div className="w-full bg-surface-header h-2 rounded-full mt-3 overflow-hidden">
+                    <div className="bg-brand h-full" style={{ width: '52%' }}></div>
+                  </div>
+                </div>
+
+                <div className="glass-card p-4">
+                  <span className="text-xs text-slate-400 font-medium">Top Channel</span>
+                  <p className="text-lg font-bold text-white mt-1">Retailers (64%)</p>
+                  <p className="text-xs text-teal mt-0.5">$2,393M Net Revenue</p>
+                  <div className="w-full bg-surface-header h-2 rounded-full mt-3 overflow-hidden">
+                    <div className="bg-teal h-full" style={{ width: '64%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 3. SALES VIEW
+    // ==========================================
+    function SalesView() {
+      return (
+        <div className="space-y-6">
+          <div className="glass-card p-5">
+            <h3 className="font-bold text-white text-base mb-1">Customer Performance Diagnostics</h3>
+            <p className="text-xs text-slate-400 mb-4">Top Accounts ranking by net revenue and gross profit contribution.</p>
+            
+            <div className="overflow-x-auto custom-scroll">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-surface-border text-slate-400 text-left">
+                    <th className="py-2.5 font-semibold">Customer</th>
+                    <th className="py-2.5 font-semibold">Primary Market</th>
+                    <th className="py-2.5 font-semibold text-right">Net Sales</th>
+                    <th className="py-2.5 font-semibold text-right">Gross Margin %</th>
+                    <th className="py-2.5 font-semibold text-right">YoY Growth</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-border/50">
+                  {TOP_CUSTOMERS.map((c, i) => (
+                    <tr key={i} className="hover:bg-surface-cardHover/60">
+                      <td className="py-3 font-semibold text-white flex items-center space-x-2">
+                        <span className="w-5 h-5 rounded-full bg-brand/10 text-brand text-[10px] flex items-center justify-center font-bold">{i+1}</span>
+                        <span>{c.name}</span>
+                      </td>
+                      <td className="py-3 text-slate-300">{c.market}</td>
+                      <td className="py-3 text-right font-mono font-bold text-white">{c.revenue}</td>
+                      <td className="py-3 text-right font-mono text-teal font-semibold">{c.gmPct}</td>
+                      <td className="py-3 text-right font-mono text-teal font-bold">{c.growth}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 4. MARKET VIEW
+    // ==========================================
+    function MarketView() {
+      const markets = [
+        { market: "India", region: "APAC", revenue: "$1,280M", share: "34.2%", gm: "38.5%" },
+        { market: "United States", region: "North America", revenue: "$840M", share: "22.5%", gm: "39.1%" },
+        { market: "Germany", region: "EU", revenue: "$460M", share: "12.3%", gm: "37.4%" },
+        { market: "United Kingdom", region: "EU", revenue: "$380M", share: "10.2%", gm: "36.8%" },
+        { market: "Canada", region: "North America", revenue: "$290M", share: "7.8%", gm: "38.2%" },
+        { market: "Australia", region: "APAC", revenue: "$240M", share: "6.4%", gm: "39.8%" },
+      ];
+
+      return (
+        <div className="space-y-6">
+          <div className="glass-card p-5">
+            <h3 className="font-bold text-white text-base mb-1">Market & Regional Distribution</h3>
+            <p className="text-xs text-slate-400 mb-4">Global performance breakdown across top geographic regions.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {markets.map((m, idx) => (
+                <div key={idx} className="p-4 bg-surface-header/60 rounded-xl border border-surface-border">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-sm">{m.market}</span>
+                    <span className="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full font-bold">{m.region}</span>
+                  </div>
+                  <div className="mt-3 flex items-baseline justify-between">
+                    <span className="text-xl font-extrabold text-white">{m.revenue}</span>
+                    <span className="text-xs text-teal font-semibold">{m.share} Share</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Gross Margin: <span className="text-white font-medium">{m.gm}</span></p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 5. SUPPLY CHAIN VIEW
+    // ==========================================
+    function SupplyChainView() {
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="glass-card p-5 border-l-4 border-l-teal">
+              <span className="text-xs text-slate-400 font-medium">Forecast Accuracy</span>
+              <p className="text-3xl font-extrabold text-white mt-1">80.5%</p>
+              <p className="text-xs text-teal mt-0.5">▲ +2.4pts vs previous fiscal</p>
+            </div>
+            <div className="glass-card p-5 border-l-4 border-l-amber-500">
+              <span className="text-xs text-slate-400 font-medium">Net Error (Under / Over)</span>
+              <p className="text-3xl font-extrabold text-white mt-1">+4.2%</p>
+              <p className="text-xs text-amber-400 mt-0.5">Over-forecasted bias</p>
+            </div>
+            <div className="glass-card p-5 border-l-4 border-l-brand">
+              <span className="text-xs text-slate-400 font-medium">Absolute Error</span>
+              <p className="text-3xl font-extrabold text-white mt-1">19.5%</p>
+              <p className="text-xs text-slate-400 mt-0.5">1.8M Units variance</p>
+            </div>
+          </div>
+
+          <div className="glass-card p-5">
+            <h3 className="font-bold text-white text-base mb-1">Customer Risk Matrix</h3>
+            <p className="text-xs text-slate-400 mb-4">Evaluating fulfillment risk vs excess storage liability.</p>
+            <div className="p-8 text-center text-slate-400 bg-surface-header/40 rounded-xl border border-surface-border">
+              <i data-lucide="check-circle" className="w-10 h-10 text-teal mx-auto mb-2"></i>
+              <p className="font-semibold text-white">Supply Chain Risk: Low to Moderate</p>
+              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                Forecast deviation remains within healthy boundaries. Automated safety stock measures in place for high-velocity PC and Accessory variants.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 6. EXECUTIVE VIEW
+    // ==========================================
+    function ExecutiveView() {
+      return (
+        <div className="space-y-6">
+          <div className="glass-card p-6 border-brand/40">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center font-bold">
+                <i data-lucide="shield" className="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Executive Strategy Cockpit</h2>
+                <p className="text-xs text-slate-400">High-level enterprise summary across all business pillars.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-surface-border">
+              <div className="p-4 bg-surface-header/60 rounded-xl">
+                <span className="text-xs text-slate-400">Total Enterprise Revenue</span>
+                <p className="text-2xl font-black text-white mt-1">$3.74B</p>
+                <span className="text-xs text-teal font-bold">▲ +17.3% Growth</span>
+              </div>
+              <div className="p-4 bg-surface-header/60 rounded-xl">
+                <span className="text-xs text-slate-400">Gross Margin Dollars</span>
+                <p className="text-2xl font-black text-white mt-1">$1.42B</p>
+                <span className="text-xs text-teal font-bold">38.08% Margin</span>
+              </div>
+              <div className="p-4 bg-surface-header/60 rounded-xl">
+                <span className="text-xs text-slate-400">Net Profit</span>
+                <p className="text-2xl font-black text-white mt-1">$86.4M</p>
+                <span className="text-xs text-rose-400 font-bold">2.31% Return</span>
+              </div>
+              <div className="p-4 bg-surface-header/60 rounded-xl">
+                <span className="text-xs text-slate-400">Operations Fulfillment</span>
+                <p className="text-2xl font-black text-white mt-1">80.5%</p>
+                <span className="text-xs text-teal font-bold">Accuracy High</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
